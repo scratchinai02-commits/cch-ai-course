@@ -124,10 +124,7 @@
                 <h1 class="text-sm sm:text-base lg:text-lg font-bold tracking-tight text-cch-800 truncate">彰化基督教醫院｜AI 行政自動化分析平台</h1>
                 <p class="hidden md:block text-[11px] text-slate-500 truncate">30 個部門 Skills × 10 項分析參數｜資料檢核・指標分析・異常提醒・圖表報告・改善追蹤</p>
             </div>
-            <button id="acctBtn" onclick="openAiSettings()" class="shrink-0 order-last flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-700" title="帳號與 AI 使用">
-                <span id="aiStatusDot" class="w-2 h-2 rounded-full bg-slate-300"></span>
-                <span id="acctLabel">登入</span>
-            </button>
+            <a href="/course/" class="shrink-0 order-last flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-cch-800" title="切換到彰基 AI 研習課程">📘 研習課程</a>
             <!-- 桌面版常用情境 -->
             <div class="hidden xl:flex items-center gap-2 shrink-0">
                 <button onclick="selectSkill(3)" class="b3d text-xs font-bold px-2.5 py-1 rounded-lg" style="--c1:#fcd34d;--c2:#d97706;--c3:#92400e">💰 03 預算</button>
@@ -438,7 +435,7 @@
                 <button id="runAiBtn" onclick="runGeminiAnalysis()"
                     class="b3d w-full py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2" style="--c1:#5eead4;--c2:#0e7490;--c3:#164e63">
                     <i class="fa-solid fa-wand-magic-sparkles"></i>
-                    <span>啟動 Gemini 產生執行腳本與模擬報告</span>
+                    <span>複製分析指令並開啟 Gemini</span>
                 </button>
             </div>
         </aside>
@@ -1892,6 +1889,7 @@ Negative prompt: text, letters, words, watermark, logo, signature, gibberish, di
 
         // 依登入與開通狀態更新：右上帳號鈕、視窗內狀態卡、管理者面板、分析按鈕
         function refreshKeyStatus() {
+            if (!document.getElementById('acctLabel')) return;
             const u = aiState.user, sh = aiState.shared;
             const allowed = !!(u && sh.allowed), denied = !!(u && sh.checked && !sh.allowed);
             document.getElementById('aiStatusDot').className = `w-2 h-2 rounded-full ${allowed ? 'bg-emerald-500' : denied ? 'bg-amber-400' : 'bg-slate-300'}`;
@@ -2037,13 +2035,19 @@ Negative prompt: text, letters, words, watermark, logo, signature, gibberish, di
         }
 
         // 頁面載入時自動以已存的 Firebase 設定連線（登入狀態由 Firebase 保留）
-        window.addEventListener('load', () => { connectFirebase(true); renderAuthBox(); refreshKeyStatus(); });
+        /* 已移除登入檢查：不連線 Firebase 登入 */
 
         async function runGeminiAnalysis() {
-            // 未登入 → 直接開登入；已登入但未開通 → 顯示開通說明
-            if (!aiState.user) { signInFirebase(); return; }
-            if (!aiState.shared.checked) { openAiSettings(); checkSharedAccess(true); return; }
-            if (!aiState.shared.allowed) { openAiSettings(); return; }
+            // 不需登入：產生分析指令 → 複製 → 開啟 Gemini 貼上執行
+            {
+                const p0 = getEditedParams(), text = buildAiPromptString(p0, false);
+                switchPanelTab('output'); switchOutputTab('prompt');
+                document.getElementById('outputViewer').value = text;
+                const done = () => showToast('已複製分析指令，請在 Gemini 貼上送出（資料檔請一併上傳）');
+                (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(done).catch(() => { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch (e) {} t.remove(); done(); });
+                window.open('https://gemini.google.com/app', '_blank', 'noopener');
+                return;
+            }
 
             const p = getEditedParams();
             const btn = document.getElementById('runAiBtn');
